@@ -46,6 +46,10 @@ namespace FileProvider.Test
             _log.Info($"Full path of target folder {path}");
             Assert.That(Path.IsPathRooted(path), Is.True);
             
+            // This test failed with .NET Core 2.1.1 (tags/7923b2c6) and below.
+            // The ctor of PhysicalFileProvider call CreateFileWatcher to create
+            // a FileSystemWatcher with the 'path'. This will cause an 
+            // ArugmentException when the 'path' doesn't exist.
             Assert.Throws<DirectoryNotFoundException>(
                 () => new PhysicalFileProvider(path)
             );

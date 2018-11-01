@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <None Include="../nlog.config" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="./Assets/**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

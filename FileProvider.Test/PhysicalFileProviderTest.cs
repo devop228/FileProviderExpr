@@ -2,12 +2,16 @@
 using System.IO;
 using NUnit.Framework;
 using Microsoft.Extensions.FileProviders;
+using com.zhusmelb.Util.Logging;
 
 namespace FileProvider.Test
 {
     [TestFixture]
     public class PhysicalFileProviderTest
     {
+        private static readonly ILogger _log 
+            = LogHelper.GetLogger(typeof(PhysicalFileProviderTest).FullName);
+
         [TestCase("")]
         [TestCase("./")]
         [TestCase("./Assets")]
@@ -38,10 +42,11 @@ namespace FileProvider.Test
 
         [Test]
         public void ConstructorNonExistTest() {
-            var path = Path.GetFullPath("./Assets/file2");
+            var path = Path.GetFullPath("./Assets/Folder2");
+            _log.Info($"Full path of target folder {path}");
             Assert.That(Path.IsPathRooted(path), Is.True);
-
-            Assert.Throws<ArgumentException>(
+            
+            Assert.Throws<DirectoryNotFoundException>(
                 () => new PhysicalFileProvider(path)
             );
         }

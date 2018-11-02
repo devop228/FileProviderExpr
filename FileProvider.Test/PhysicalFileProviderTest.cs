@@ -44,7 +44,7 @@ namespace FileProvider.Test
         }
 
         [TestCase(@"c:\")]
-        [TestCase(@"c:\bin")]
+        [TestCase(@"c:\Windows\")]
         public void ContructorValidTest(string path) {
             using (var provider = new PhysicalFileProvider(path)) {
                 Assert.That(provider, Is.Not.Null);
@@ -94,7 +94,7 @@ namespace FileProvider.Test
             logFileInfo(contents);
         }
 
-        abstract class ChangeRecorder
+        public abstract class ChangeRecorder
         {
             public abstract void OnChange(string fileName);
         }
@@ -105,10 +105,14 @@ namespace FileProvider.Test
             var monitoredPath = "Folder1";
             var mockChangeRecorder = new Mock<ChangeRecorder>();
 
+            mockChangeRecorder.Setup(x => x.OnChange(It.IsAny<string>()))
+                .Verifiable();
+
             var token = provider.Watch($"{monitoredPath}/**");
             Assert.That(token.ActiveChangeCallbacks, Is.True);
             using (var folder1Token = token.RegisterChangeCallback(
-                (_) => _log.Info("Contents under Folder1 changed."), null)) 
+                (obj) => (obj as ChangeRecorder)?.OnChange("file")
+                ,mockChangeRecorder.Object)) 
             {
                 var root = provider.Root;
                 var path = Path.Combine(root, monitoredPath);
@@ -116,9 +120,9 @@ namespace FileProvider.Test
                 var newFile = new FileInfo(Path.Combine(path, "file1"));
                 var stm = newFile.Create();
                 stm?.Close();
-
-                // Thread.Sleep(4000);
+                Thread.Sleep(4000);
             }
+            mockChangeRecorder.Verify(x=>x.OnChange(It.IsAny<string>()));
         }
 
         private void logFileInfo(IEnumerable<IFileInfo> files) {

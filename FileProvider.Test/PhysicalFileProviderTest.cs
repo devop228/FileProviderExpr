@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Threading;
 
 using NUnit.Framework;
 using Microsoft.Extensions.FileProviders;
@@ -13,8 +14,8 @@ namespace FileProvider.Test
     [TestFixture]
     public class PhysicalFileProviderTest
     {
-        private IFileProvider _fileProvider;
-        private const string Test_Assets_Path = "./Assets/";
+        private PhysicalFileProvider _fileProvider;
+        private const string Test_Assets_Path = "./Assets";
         private static readonly ILogger _log 
             = LogHelper.GetLogger(typeof(PhysicalFileProviderTest).FullName);
 
@@ -23,7 +24,7 @@ namespace FileProvider.Test
             var path = Path.GetFullPath(Test_Assets_Path);
             Assert.That(Path.IsPathRooted(path), Is.True);
             Assert.That(Directory.Exists(path), Is.True);
-            _fileProvider = new PhysicalFileProvider(Test_Assets_Path, ExclusionFilters.Sensitive);
+            _fileProvider = new PhysicalFileProvider(path, ExclusionFilters.Sensitive);
             Assert.That(_fileProvider, Is.Not.Null);
         }
 
@@ -90,6 +91,25 @@ namespace FileProvider.Test
             contents = provider.GetDirectoryContents("Folder1");
             Assert.That(contents.Exists, Is.True);
             logFileInfo(contents);
+        }
+
+        [Test]
+        public void MonitorChangesTest() {
+            var provider = _fileProvider;
+            var monitoredPath = "Folder1";
+
+            var token = provider.Watch($"{monitoredPath}/**");
+            Assert.That(token.ActiveChangeCallbacks, Is.True);
+            var folder1Token = token.RegisterChangeCallback((_) => _log.Info("Contents under Folder1 changed."), null);
+
+            var root = provider.Root;
+            var path = Path.Combine(root, monitoredPath);
+            
+            var newFile = new FileInfo(Path.Combine(path, "file1"));
+            var stm = newFile.Create();
+            stm?.Close();
+
+            Thread.Sleep(60000);
         }
 
         private void logFileInfo(IEnumerable<IFileInfo> files) {

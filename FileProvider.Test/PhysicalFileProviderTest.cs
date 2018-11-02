@@ -6,6 +6,7 @@ using System.Threading;
 using NUnit.Framework;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.FileProviders.Physical;
+using Moq;
 
 using com.zhusmelb.Util.Logging;
 
@@ -93,23 +94,31 @@ namespace FileProvider.Test
             logFileInfo(contents);
         }
 
+        abstract class ChangeRecorder
+        {
+            public abstract void OnChange(string fileName);
+        }
+
         [Test]
         public void MonitorChangesTest() {
             var provider = _fileProvider;
             var monitoredPath = "Folder1";
+            var mockChangeRecorder = new Mock<ChangeRecorder>();
 
             var token = provider.Watch($"{monitoredPath}/**");
             Assert.That(token.ActiveChangeCallbacks, Is.True);
-            var folder1Token = token.RegisterChangeCallback((_) => _log.Info("Contents under Folder1 changed."), null);
+            using (var folder1Token = token.RegisterChangeCallback(
+                (_) => _log.Info("Contents under Folder1 changed."), null)) 
+            {
+                var root = provider.Root;
+                var path = Path.Combine(root, monitoredPath);
+                
+                var newFile = new FileInfo(Path.Combine(path, "file1"));
+                var stm = newFile.Create();
+                stm?.Close();
 
-            var root = provider.Root;
-            var path = Path.Combine(root, monitoredPath);
-            
-            var newFile = new FileInfo(Path.Combine(path, "file1"));
-            var stm = newFile.Create();
-            stm?.Close();
-
-            Thread.Sleep(60000);
+                // Thread.Sleep(4000);
+            }
         }
 
         private void logFileInfo(IEnumerable<IFileInfo> files) {
